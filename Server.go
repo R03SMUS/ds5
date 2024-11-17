@@ -37,20 +37,23 @@ func newServer() *server {
 }
 
 func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.RequestRespone, error) {
-
 	return &pb.RequestRespone{
 		HighestBid: s.highest_bid,
 	}, nil
 }
 
 func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Ack, error) {
-
+	var state int64 = 0
 	s.mu.Lock()
-	s.highest_bid = req.Bid
-	s.highest_bid_id = req.Id
+	if s.highest_bid <= req.Bid {
+		s.highest_bid = req.Bid
+		s.highest_bid_id = req.Id
+	} else {
+		state = 1
+	}
 	s.mu.Unlock()
 
 	return &pb.Ack{
-		State: 0, // 0 == Success, 1 == Fail, 2 == Exception.
+		State: state, // 0 == Success, 1 == Fail, 2 == Exception.
 	}, nil
 }
