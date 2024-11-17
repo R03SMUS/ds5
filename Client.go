@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	pb "github.com/r03smus/auction/proto"
 	"golang.org/x/net/context"
@@ -46,6 +47,7 @@ func newClient(id int64) *Client {
 		log.Fatalf("could not connect: %v", err)
 	}
 	client := pb.NewAuctionClient(conn)
+	fmt.Printf("Started Client: %d\n", id)
 	return &Client{
 		client: client,
 		Id:     id,
@@ -53,7 +55,9 @@ func newClient(id int64) *Client {
 }
 
 func main() {
-	client := newClient(0)
+	id := flag.Int("id", 1, "Id")
+	flag.Parse()
+	client := newClient(int64(*id))
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
@@ -73,13 +77,11 @@ func main() {
 
 		} else if strings.Contains(input, "/request") {
 			client.RequestBid()
+		} else if strings.Contains(input, "/exit") {
+			break
 		} else {
 			fmt.Println("no command")
 		}
 
 	}
-	client.RequestBid()
-	client.PlaceBid(6200)
-	client.RequestBid()
-
 }

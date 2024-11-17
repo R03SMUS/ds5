@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"slices"
 	"sync"
 )
 
@@ -14,7 +15,7 @@ type server struct {
 	mu             sync.Mutex // Protects lamportTime and clients map
 	highest_bid    int64
 	highest_bid_id int64
-	bidders        []int
+	bidders        []int64
 }
 
 func main() {
@@ -43,8 +44,15 @@ func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.RequestRespon
 }
 
 func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Ack, error) {
+
+	//TODO: TIME LIMIT
+
 	var state int64 = 0
 	s.mu.Lock()
+	if !slices.Contains(s.bidders, req.Id) {
+		s.bidders = append(s.bidders, req.Id)
+	}
+
 	if s.highest_bid <= req.Bid {
 		s.highest_bid = req.Bid
 		s.highest_bid_id = req.Id
