@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package mutex;
+
+option go_package = ".";
+
+service Auction {
+  rpc Bid(Bid_message) returns (Ack) {}
+  rpc Result(Request) returns (RequestRespone) {}
+}
+
+message Bid_message {
+  int64 id = 1;
+  int64 bid = 2;
+}
+
+message Ack {
+  int64 state = 1;
+}
+
+message Request {
+
+}
+
+message RequestRespone{
+  int64 highest_bid = 1;
+}
+
