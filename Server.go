@@ -23,7 +23,8 @@ type server struct {
 }
 
 func main() {
-	duration := flag.Int("d", 1, "Duration for auction")
+	duration := flag.Int("d", 120, "Duration for auction, in seconds, Default 120 seconds")
+	
 	lis, err := net.Listen("tcp", ":42069")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
