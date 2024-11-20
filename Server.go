@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	pb "github.com/r03smus/auction/proto"
 	"google.golang.org/grpc"
 	"log"
 	"net"
 	"slices"
 	"sync"
+	"time"
 )
 
 type server struct {
@@ -16,6 +18,7 @@ type server struct {
 	highest_bid    int64
 	highest_bid_id int64
 	bidders        []int64
+	finished       bool
 }
 
 func main() {
@@ -27,14 +30,26 @@ func main() {
 	s := grpc.NewServer()
 	pb.RegisterAuctionServer(s, newServer())
 
-	log.Println("Server started on port 42069")
+	log.Printf("server listening at %v", lis.Addr())
+
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+
 }
 
 func newServer() *server {
-	return &server{}
+
+	s := &server{}
+	s.endAuction(20)
+	return s
+}
+
+func (s *server) endAuction(durantion int64) {
+	time.AfterFunc(time.Second*time.Duration(durantion), func() {
+		s.finished = true
+		fmt.Println("Auction Closed!")
+	})
 }
 
 func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.RequestRespone, error) {
@@ -44,8 +59,12 @@ func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.RequestRespon
 }
 
 func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Ack, error) {
-
-	//TODO: TIME LIMIT
+	
+	if s.finished {
+		return &pb.Ack{
+			State: 1, // 0 == Success, 1 == Fail, 2 == Exception (?).
+		}, nil
+	}
 
 	var state int64 = 0
 	s.mu.Lock()
@@ -62,6 +81,6 @@ func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Ack, error) {
 	s.mu.Unlock()
 
 	return &pb.Ack{
-		State: state, // 0 == Success, 1 == Fail, 2 == Exception.
+		State: state, // 0 == Success, 1 == Fail, 2 == Exception (?).
 	}, nil
 }
