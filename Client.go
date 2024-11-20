@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	pb "github.com/r03smus/auction/proto"
+	pb "github.com/r03smus/auction/proto/auction"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -38,7 +38,16 @@ func (c *Client) RequestBid() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	resultresponse, _ := c.client.Result(ctx, &pb.Request{})
-	fmt.Println("Highest bid:", resultresponse.HighestBid)
+
+	var state string
+
+	if resultresponse.State == 0 {
+		state = "open"
+	} else {
+		state = "closed"
+	}
+
+	fmt.Printf("Auction is %s - Highest bid: %d", state, resultresponse.HighestBid)
 }
 
 func newClient(id int64) *Client {

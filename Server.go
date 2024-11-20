@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	pb "github.com/r03smus/auction/proto"
+	pb "github.com/r03smus/auction/proto/auction"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -15,16 +15,17 @@ import (
 
 type server struct {
 	pb.AuctionServer
-	mu             sync.Mutex // Protects lamportTime and clients map
-	highest_bid    int64
-	highest_bid_id int64
-	bidders        []int64
-	finished       bool
+	mu              sync.Mutex // Protects lamportTime and clients map
+	highestBid      int64
+	highestBidId    int64
+	bidders         []int64
+	finished        bool
+	uniqeidentifier map[int64]pb.Response
 }
 
 func main() {
 	duration := flag.Int("d", 120, "Duration for auction, in seconds, Default 120 seconds")
-	
+
 	lis, err := net.Listen("tcp", ":42069")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -55,35 +56,48 @@ func (s *server) endAuction(durantion int64) {
 	})
 }
 
-func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.RequestRespone, error) {
-	return &pb.RequestRespone{
-		HighestBid: s.highest_bid,
+func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.Response, error) {
+
+	response, ok := s.uniqeidentifier[req.UniqeIdentifier]
+	if ok {
+		return &response, nil
+	}
+	var state int64 = 0
+	if s.finished {
+		state = 1
+	}
+
+	return &pb.Response{
+		State:      state, // always a success? if sendt back, maybe state if ended
+		HighestBid: s.highestBid,
 	}, nil
 }
 
-func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Ack, error) {
+func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Response, error) {
+
+	var state int64 = 0
 
 	if s.finished {
-		return &pb.Ack{
-			State: 1, // 0 == Success, 1 == Fail, 2 == Exception (?).
+		state = 1
+		return &pb.Response{
+			State: state, // 0 == Success, 1 == Fail, 2 == Exception (?).
 		}, nil
 	}
 
-	var state int64 = 0
 	s.mu.Lock()
 	if !slices.Contains(s.bidders, req.Id) {
 		s.bidders = append(s.bidders, req.Id)
 	}
 
-	if s.highest_bid <= req.Bid {
-		s.highest_bid = req.Bid
-		s.highest_bid_id = req.Id
+	if s.highestBid <= req.Bid {
+		s.highestBid = req.Bid
+		s.highestBidId = req.Id
 	} else {
 		state = 1
 	}
 	s.mu.Unlock()
 
-	return &pb.Ack{
+	return &pb.Response{
 		State: state, // 0 == Success, 1 == Fail, 2 == Exception (?).
 	}, nil
 }
