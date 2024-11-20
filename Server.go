@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	pb "github.com/r03smus/auction/proto"
 	"google.golang.org/grpc"
@@ -22,13 +23,14 @@ type server struct {
 }
 
 func main() {
+	duration := flag.Int("d", 1, "Duration for auction")
 	lis, err := net.Listen("tcp", ":42069")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterAuctionServer(s, newServer())
+	pb.RegisterAuctionServer(s, newServer(int64(*duration)))
 
 	log.Printf("server listening at %v", lis.Addr())
 
@@ -38,10 +40,10 @@ func main() {
 
 }
 
-func newServer() *server {
+func newServer(duration int64) *server {
 
 	s := &server{}
-	s.endAuction(20)
+	s.endAuction(duration)
 	return s
 }
 
@@ -59,7 +61,7 @@ func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.RequestRespon
 }
 
 func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Ack, error) {
-	
+
 	if s.finished {
 		return &pb.Ack{
 			State: 1, // 0 == Success, 1 == Fail, 2 == Exception (?).
