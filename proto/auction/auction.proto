@@ -5,8 +5,10 @@ option go_package = ".";
 service Auction {
   rpc Bid(Bid_message) returns (Response) {}
   rpc Result(Request) returns (Response) {}
-  rpc Update(update) returns (Ack);
+
 }
+
+
 
 message Bid_message {
   int64 id = 1;
@@ -23,6 +25,12 @@ message Response {
   int64 highest_bid = 2;
 }
 
+service Replica {
+  rpc SendUpdate(update) returns (Ack);
+  rpc Update(update) returns (Ack);
+  rpc Connect(ConnectRequest) returns (Ack);
+}
+
 message update {
   int64 uniqeidentifier = 1;
   Response response = 2;
@@ -30,5 +38,9 @@ message update {
 
 message Ack {
   bool ok = 1;
+}
+
+message ConnectRequest {
+  string replicaAdress = 1;
 }
 

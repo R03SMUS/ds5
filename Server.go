@@ -6,6 +6,7 @@ import (
 	"fmt"
 	pb "github.com/r03smus/auction/proto/auction"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net"
 	"slices"
@@ -13,8 +14,35 @@ import (
 	"time"
 )
 
+func (s *server) SendUpdate(ctx context.Context, req *pb.Update) (*pb.Ack, error) {
+	for _, replica := range s.replicas {
+		go func(replica pb.ReplicaClient) {
+			_, err := replica.Update(ctx, req)
+			if err != nil {
+				log.Fatalf("Replica Update Error: %v", err)
+			}
+		}(replica)
+	}
+	return &pb.Ack{Ok: true}, nil
+}
+
+func (s *server) Connect(ctx context.Context, cr *pb.ConnectRequest) (*pb.Ack, error) {
+	fmt.Println(cr.ReplicaAdress)
+
+	conn, err := grpc.NewClient(cr.ReplicaAdress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("NewClient failed: %v", err)
+	}
+	client := pb.NewReplicaClient(conn)
+
+	s.replicas = append(s.replicas, client)
+
+	return &pb.Ack{Ok: true}, nil
+}
+
 type server struct {
 	pb.AuctionServer
+	replicas        []pb.ReplicaClient
 	mu              sync.Mutex // Protects lamportTime and clients map
 	highestBid      int64
 	highestBidId    int64
@@ -39,7 +67,6 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-
 }
 
 func newServer(duration int64) *server {
@@ -66,11 +93,19 @@ func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.Response, err
 	if s.finished {
 		state = 1
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
-	return &pb.Response{
-		State:      state, // always a success? if sendt back, maybe state if ended
-		HighestBid: s.highestBid,
-	}, nil
+	n := &pb.Response{
+		State: state,
+	}
+	s.uniqeidentifier[req.UniqeIdentifier] = *n
+	_, err := s.SendUpdate(ctx, &pb.Update{Uniqeidentifier: req.UniqeIdentifier, Response: n})
+	if err != nil {
+		return nil, err
+	}
+
+	return n, nil
 }
 
 func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Response, error) {
@@ -97,7 +132,11 @@ func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Response, err
 	}
 	s.mu.Unlock()
 
-	return &pb.Response{
-		State: state, // 0 == Success, 1 == Fail, 2 == Exception (?).
-	}, nil
+	reponse := &pb.Response{
+		State: state,
+	}
+
+	s.uniqeidentifier[req.UniqeIdentifier] = *reponse
+
+	return reponse, nil
 }

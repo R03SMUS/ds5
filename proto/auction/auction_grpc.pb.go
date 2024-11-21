@@ -20,7 +20,6 @@ const _ = grpc.SupportPackageIsVersion7
 type AuctionClient interface {
 	Bid(ctx context.Context, in *BidMessage, opts ...grpc.CallOption) (*Response, error)
 	Result(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
-	Update(ctx context.Context, in *Update, opts ...grpc.CallOption) (*Ack, error)
 }
 
 type auctionClient struct {
@@ -49,22 +48,12 @@ func (c *auctionClient) Result(ctx context.Context, in *Request, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *auctionClient) Update(ctx context.Context, in *Update, opts ...grpc.CallOption) (*Ack, error) {
-	out := new(Ack)
-	err := c.cc.Invoke(ctx, "/Auction/Update", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AuctionServer is the server API for Auction service.
 // All implementations must embed UnimplementedAuctionServer
 // for forward compatibility
 type AuctionServer interface {
 	Bid(context.Context, *BidMessage) (*Response, error)
 	Result(context.Context, *Request) (*Response, error)
-	Update(context.Context, *Update) (*Ack, error)
 	mustEmbedUnimplementedAuctionServer()
 }
 
@@ -77,9 +66,6 @@ func (UnimplementedAuctionServer) Bid(context.Context, *BidMessage) (*Response, 
 }
 func (UnimplementedAuctionServer) Result(context.Context, *Request) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Result not implemented")
-}
-func (UnimplementedAuctionServer) Update(context.Context, *Update) (*Ack, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedAuctionServer) mustEmbedUnimplementedAuctionServer() {}
 
@@ -130,24 +116,6 @@ func _Auction_Result_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Auction_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Update)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionServer).Update(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Auction/Update",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionServer).Update(ctx, req.(*Update))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Auction_ServiceDesc is the grpc.ServiceDesc for Auction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -163,9 +131,163 @@ var Auction_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Result",
 			Handler:    _Auction_Result_Handler,
 		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "auction.proto",
+}
+
+// ReplicaClient is the client API for Replica service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ReplicaClient interface {
+	SendUpdate(ctx context.Context, in *Update, opts ...grpc.CallOption) (*Ack, error)
+	Update(ctx context.Context, in *Update, opts ...grpc.CallOption) (*Ack, error)
+	Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*Ack, error)
+}
+
+type replicaClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewReplicaClient(cc grpc.ClientConnInterface) ReplicaClient {
+	return &replicaClient{cc}
+}
+
+func (c *replicaClient) SendUpdate(ctx context.Context, in *Update, opts ...grpc.CallOption) (*Ack, error) {
+	out := new(Ack)
+	err := c.cc.Invoke(ctx, "/Replica/SendUpdate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *replicaClient) Update(ctx context.Context, in *Update, opts ...grpc.CallOption) (*Ack, error) {
+	out := new(Ack)
+	err := c.cc.Invoke(ctx, "/Replica/Update", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *replicaClient) Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*Ack, error) {
+	out := new(Ack)
+	err := c.cc.Invoke(ctx, "/Replica/Connect", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ReplicaServer is the server API for Replica service.
+// All implementations must embed UnimplementedReplicaServer
+// for forward compatibility
+type ReplicaServer interface {
+	SendUpdate(context.Context, *Update) (*Ack, error)
+	Update(context.Context, *Update) (*Ack, error)
+	Connect(context.Context, *ConnectRequest) (*Ack, error)
+	mustEmbedUnimplementedReplicaServer()
+}
+
+// UnimplementedReplicaServer must be embedded to have forward compatible implementations.
+type UnimplementedReplicaServer struct {
+}
+
+func (UnimplementedReplicaServer) SendUpdate(context.Context, *Update) (*Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendUpdate not implemented")
+}
+func (UnimplementedReplicaServer) Update(context.Context, *Update) (*Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
+}
+func (UnimplementedReplicaServer) Connect(context.Context, *ConnectRequest) (*Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Connect not implemented")
+}
+func (UnimplementedReplicaServer) mustEmbedUnimplementedReplicaServer() {}
+
+// UnsafeReplicaServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ReplicaServer will
+// result in compilation errors.
+type UnsafeReplicaServer interface {
+	mustEmbedUnimplementedReplicaServer()
+}
+
+func RegisterReplicaServer(s grpc.ServiceRegistrar, srv ReplicaServer) {
+	s.RegisterService(&Replica_ServiceDesc, srv)
+}
+
+func _Replica_SendUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Update)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReplicaServer).SendUpdate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Replica/SendUpdate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReplicaServer).SendUpdate(ctx, req.(*Update))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Replica_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Update)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReplicaServer).Update(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Replica/Update",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReplicaServer).Update(ctx, req.(*Update))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Replica_Connect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConnectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReplicaServer).Connect(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Replica/Connect",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReplicaServer).Connect(ctx, req.(*ConnectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// Replica_ServiceDesc is the grpc.ServiceDesc for Replica service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Replica_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "Replica",
+	HandlerType: (*ReplicaServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SendUpdate",
+			Handler:    _Replica_SendUpdate_Handler,
+		},
 		{
 			MethodName: "Update",
-			Handler:    _Auction_Update_Handler,
+			Handler:    _Replica_Update_Handler,
+		},
+		{
+			MethodName: "Connect",
+			Handler:    _Replica_Connect_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
