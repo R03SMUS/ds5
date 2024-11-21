@@ -16,14 +16,15 @@ import (
 )
 
 type Client struct {
-	client pb.AuctionClient
-	Id     int64
+	client     pb.AuctionClient
+	Id         int64
+	operations int64
 }
 
 func (c *Client) PlaceBid(amount int64) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	response, _ := c.client.Bid(ctx, &pb.BidMessage{Id: c.Id, Bid: amount})
+	response, _ := c.client.Bid(ctx, &pb.BidMessage{Id: c.Id, Bid: amount, UniqeIdentifier: c.Id*1000 + c.operations})
 
 	if response.State == 0 {
 		fmt.Println("bid was successful")
@@ -37,7 +38,7 @@ func (c *Client) PlaceBid(amount int64) {
 func (c *Client) RequestBid() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	resultresponse, _ := c.client.Result(ctx, &pb.Request{})
+	resultresponse, _ := c.client.Result(ctx, &pb.Request{UniqeIdentifier: c.Id*1000 + c.operations})
 
 	var state string
 
@@ -47,7 +48,7 @@ func (c *Client) RequestBid() {
 		state = "closed"
 	}
 
-	fmt.Printf("Auction is %s - Highest bid: %d", state, resultresponse.HighestBid)
+	fmt.Printf("Auction is %s - Highest bid: %d\n", state, resultresponse.HighestBid)
 }
 
 func newClient(id int64) *Client {
@@ -68,6 +69,7 @@ func main() {
 	flag.Parse()
 	client := newClient(int64(*id))
 	for {
+		client.operations += 1
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 

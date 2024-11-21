@@ -3,54 +3,85 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"log"
+	"net"
+	"sync"
+	"time"
+
 	pb "github.com/r03smus/auction/proto/auction"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"log"
-	"net"
-	"time"
 )
 
+// replica structure
 type replica struct {
-	pb.AuctionServer
-	uniqeidentifier map[int64]pb.Response
+	pb.ReplicaServer
+	uniqeidentifier sync.Map // Thread-safe map for unique identifiers
 }
 
 func main() {
-	id := flag.String("id", ":50000", "replica address fx: :50000")
+	// Parse command-line flag for replica ID
+	id := flag.String("id", "50000", "Replica address, e.g., 50000")
+	flag.Parse()
 
-	replicaAdress := "localhost:" + *id
+	replicaAddress := "localhost:" + *id
+	fmt.Printf("Starting replica at %s\n", replicaAddress)
 
-	lis, err := net.Listen("tcp", *id)
+	// Start gRPC server
+	lis, err := net.Listen("tcp", ":"+*id)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	s := grpc.NewServer()
-	pb.RegisterAuctionServer(s, newReplica())
-	s.Serve(lis)
+	grpcServer := grpc.NewServer()
+	pb.RegisterReplicaServer(grpcServer, newReplica())
 
-	client := connect("localhost:42069")
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("Failed to serve: %v", err)
+		}
+	}()
+
+	// Connect to primary server
+	client := connectToPrimary("localhost:42069")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	client.Connect(ctx, &pb.ConnectRequest{ReplicaAdress: replicaAdress})
+
+	_, err = client.Connect(ctx, &pb.ConnectRequest{ReplicaAdress: replicaAddress})
+	if err != nil {
+		log.Fatalf("Failed to connect to primary server: %v", err)
+	}
+
+	fmt.Printf("Replica successfully connected to primary at localhost:42069\n")
+	select {} // Block forever
 }
 
-func newReplica() pb.AuctionServer {
+// newReplica initializes a new replica instance
+func newReplica() *replica {
 	return &replica{}
 }
-func connect(primary string) pb.ReplicaClient {
-	conn, err := grpc.NewClient(primary, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+// connectToPrimary establishes a connection to the primary server
+func connectToPrimary(primaryAddress string) pb.ReplicaClient {
+	conn, err := grpc.NewClient(primaryAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("could not connect: %v", err)
+		log.Fatalf("Could not connect to primary server: %v", err)
 	}
 	return pb.NewReplicaClient(conn)
 }
 
-func (s *replica) Update(ctx context.Context, req *pb.Update) (*pb.Ack, error) {
-	_, ok := s.uniqeidentifier[req.Uniqeidentifier]
-	if !ok {
-		s.uniqeidentifier[req.Uniqeidentifier] = *req.Response
+// Update handles update requests from the primary server
+func (r *replica) Update(ctx context.Context, req *pb.Update) (*pb.Ack, error) {
+	fmt.Printf("Received update: UniqueIdentifier=%d\n", req.Uniqeidentifier)
+
+	// Check if the unique identifier already exists
+	_, loaded := r.uniqeidentifier.LoadOrStore(req.Uniqeidentifier, req.Response)
+	if loaded {
+		fmt.Println("Update ignored: Entry already exists")
+	} else {
+		fmt.Println("Update applied")
 	}
+
 	return &pb.Ack{Ok: true}, nil
 }
