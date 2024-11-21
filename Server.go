@@ -32,12 +32,10 @@ type server struct {
 func (s *server) SendUpdate(ctx context.Context, req *pb.Update) (*pb.Ack, error) {
 	var wg sync.WaitGroup
 	var errOccurred bool
-	fmt.Println("shoudl send update")
-	fmt.Println(s.replicas)
-	fmt.Println(len(s.replicas))
+
 	for _, replica := range s.replicas {
 		wg.Add(1)
-		fmt.Println("1")
+
 		go func(replica pb.ReplicaClient) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -67,11 +65,8 @@ func (s *server) Connect(ctx context.Context, cr *pb.ConnectRequest) (*pb.Ack, e
 	}
 
 	client := pb.NewReplicaClient(conn)
-	fmt.Println("SHOULD CONNECT?")
-	fmt.Println(len(s.replicas))
-	fmt.Println(s.replicas)
+
 	s.replicas = append(s.replicas, client)
-	fmt.Println(len(s.replicas))
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -86,7 +81,6 @@ func (s *server) Connect(ctx context.Context, cr *pb.ConnectRequest) (*pb.Ack, e
 // Result retrieves or calculates the result for a unique identifier
 func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.Response, error) {
 
-	fmt.Println(s.highestBid)
 	fmt.Println(req.UniqeIdentifier)
 
 	if value, ok := s.uniqeidentifier.Load(req.UniqeIdentifier); ok {
@@ -119,14 +113,11 @@ func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.Response, err
 // Bid handles bid requests
 func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Response, error) {
 
-	fmt.Println("HELLO! 1")
 	fmt.Println(req.UniqeIdentifier)
 
 	if value, ok := s.uniqeidentifier.Load(req.UniqeIdentifier); ok {
 		return value.(*pb.Response), nil
 	}
-
-	fmt.Println("HELLO! 2")
 
 	var state int64
 
