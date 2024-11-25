@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -57,6 +58,7 @@ func (s *server) SendUpdate(ctx context.Context, req *pb.Update) (*pb.Ack, error
 
 // Connect handles new replica connections
 func (s *server) Connect(ctx context.Context, cr *pb.ConnectRequest) (*pb.Ack, error) {
+	log.Printf("Connecting to replica: %s\n", cr.ReplicaAdress)
 	fmt.Printf("Connecting to replica: %s\n", cr.ReplicaAdress)
 
 	conn, err := grpc.NewClient(cr.ReplicaAdress, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -81,9 +83,10 @@ func (s *server) Connect(ctx context.Context, cr *pb.ConnectRequest) (*pb.Ack, e
 // Result retrieves or calculates the result for a unique identifier
 func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.Response, error) {
 
-	fmt.Println(req.UniqeIdentifier)
+	log.Printf("Result was requested\n")
 
 	if value, ok := s.uniqeidentifier.Load(req.UniqeIdentifier); ok {
+		log.Printf("Uniqe identifier found: %s\n", value.(string))
 		fmt.Printf("Uniqe identifier found: %s\n", value.(string))
 		return value.(*pb.Response), nil
 	}
@@ -113,7 +116,8 @@ func (s *server) Result(ctx context.Context, req *pb.Request) (*pb.Response, err
 // Bid handles bid requests
 func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Response, error) {
 
-	fmt.Println(req.UniqeIdentifier)
+	log.Printf("ID: %d bid %d\n", req.Id, req.Bid)
+	fmt.Printf("ID: %d bid %d\n", req.Id, req.Bid)
 
 	if value, ok := s.uniqeidentifier.Load(req.UniqeIdentifier); ok {
 		return value.(*pb.Response), nil
@@ -131,7 +135,6 @@ func (s *server) Bid(ctx context.Context, req *pb.BidMessage) (*pb.Response, err
 	if !slices.Contains(s.bidders, req.Id) {
 		s.bidders = append(s.bidders, req.Id)
 	}
-	fmt.Println("hello here", s.highestBid, req.Bid, s.highestBid < req.Bid)
 	if s.highestBid < req.Bid {
 		s.highestBid = req.Bid
 		s.highestBidId = req.Id
@@ -159,6 +162,7 @@ func (s *server) endAuction(duration int64) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.finished = true
+		log.Println("Auction Closed!")
 		fmt.Println("Auction Closed!")
 	})
 }
@@ -175,6 +179,13 @@ func newReplicaServer(s *server) *server {
 }
 
 func main() {
+	logFile, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("failed to open log file: %v", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	duration := flag.Int("d", 120, "Duration for auction, in seconds (default: 120)")
 	flag.Parse()
 

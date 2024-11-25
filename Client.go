@@ -65,6 +65,13 @@ func newClient(id int64) *Client {
 }
 
 func main() {
+	logFile, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("failed to open log file: %v", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	id := flag.Int("id", 1, "Id")
 	flag.Parse()
 	client := newClient(int64(*id))

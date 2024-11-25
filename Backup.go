@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -21,6 +22,12 @@ type replica struct {
 }
 
 func main() {
+	logFile, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("failed to open log file: %v", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
 	// Parse command-line flag for replica ID
 	id := flag.String("id", "50000", "Replica address, e.g., 50000")
 	flag.Parse()

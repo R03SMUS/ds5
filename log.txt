@@ -1,0 +1,12 @@
+2024/11/25 18:06:54 Server listening at [::]:42069
+2024/11/25 18:06:55 Connecting to replica: localhost:50000
+2024/11/25 18:07:09 ID: 1 bid 1
+2024/11/25 18:07:11 Result was requested
+2024/11/25 18:07:14 ID: 2 bid 400
+2024/11/25 18:07:21 ID: 1 bid 300
+2024/11/25 18:07:24 Result was requested
+2024/11/25 18:07:27 ID: 1 bid 420
+2024/11/25 18:07:39 Result was requested
+2024/11/25 18:07:43 ID: 2 bid 400123
+2024/11/25 18:07:46 Result was requested
+2024/11/25 18:08:54 Auction Closed!
